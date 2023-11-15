@@ -4,23 +4,80 @@ format: pdf
 editor: source
 ---
 
-## Quarto
-
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
-
 ```{r}
-1 + 1
+library(palmerpenguins)
+library(tidyverse)
+library(reticulate)
+library(gridExtra)
+library(GGally)
+```
+```{python}
+import numpy as np
+import statsmodels.api as sm
+import pandas as pd
 ```
 
-You can add options to executable code like this
 
 ```{r}
-#| echo: false
-2 * 2
+dados <- penguins
+head(penguins)
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+```{python}
+# Verificando valores nulos
+dados_py = r.dados
+dados_py.isnull().sum()
+```
+
+```{r}
+body_mass_plot <- ggplot(data = penguins) + #- distribution of the response variable
+  aes(x = body_mass_g) +
+  geom_histogram(color = "red", binwidth = 0.5) +
+  xlab("Penguin body mass (g)")
+
+species_plot <- ggplot(data = penguins) + #- distribution of the explanatory variable
+  aes(x = species) +
+  geom_bar(fill = "orange", binwidth = 0.5) +
+  xlab("Penguin species") +
+  geom_text(aes(label = ..count..), 
+            stat = "count", 
+            vjust = 1.5, 
+            colour = "black")
+
+bill_length_plot <- ggplot(data = penguins) + #- distribution of the explanatory variable
+  aes(x = bill_length_mm) +
+  geom_histogram(fill = "yellow", colour = "white", binwidth = 0.5) +
+  xlab("Penguin bill length (mm)")
+
+bill_depth_plot <- ggplot(data = penguins) + #- distribution of the explanatory variable
+  aes(x = bill_depth_mm) +
+  geom_histogram(fill = "green", colour = "white", binwidth = 0.5) +
+  xlab("Penguin bill depth (mm)")
+
+flipper_length_plot <- ggplot(data = penguins) + #- distribution of the explanatory variable
+  aes(x = flipper_length_mm) +
+  geom_histogram(fill = "blue", colour = "blue", binwidth = 0.5) +
+  xlab("Penguin flipper length (mm)")
+
+penguin_sex_plot <- ggplot(data = penguins) + #- distribution of the explanatory variable
+  aes(x = sex) +
+  geom_bar(fill = "purple", binwidth = 0.5) +
+  xlab("Penguin sex (M of F)") +
+  geom_text(aes(label = ..count..), 
+            stat = "count", 
+            vjust = 1.5, 
+            colour = "black")
+```
+```{r}
+grid.arrange(body_mass_plot, species_plot, bill_length_plot, bill_depth_plot, flipper_length_plot, penguin_sex_plot)
+```
+
+```{r}
+
+```
+
+
+
+
+
+
