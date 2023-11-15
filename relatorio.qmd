@@ -10,10 +10,13 @@ library(tidyverse)
 library(reticulate)
 library(gridExtra)
 library(GGally)
+library(reglin)
+library(sjPlot)
 ```
 ```{python}
 import numpy as np
 import statsmodels.api as sm
+import statsmodels.formula.api as smf
 import pandas as pd
 ```
 
@@ -73,11 +76,104 @@ grid.arrange(body_mass_plot, species_plot, bill_length_plot, bill_depth_plot, fl
 ```
 
 ```{r}
+ggpairs(data = penguins,
+        columns = c("species", "bill_length_mm", "bill_depth_mm", "flipper_length_mm", "sex", "body_mass_g"))
+```
 
+No gráfico acima a diagonal principal da a distribuição da variável. Acima da diagonal, temos as medidadas de correlação. Abaixo dela, é mostrado o scatterplot entre duas variáveis com o intuito de observar se há correlação.
+
+Do gráfico, é possível perceber uma forte correlação entre *body_mass* e *bill_length*, entre *body_mass* e *bill_depth*, *body_mass* e *flipper_length*.
+
+# Construindo modelos
+
+Primeiro, queremos verificar a a relação entre body_mass_g e bill_length_mm, bill_depth_mm e flipper_length_mm individualmente. Lembrando que estaremos testando as hipóteses
+
+$$\begin{align*}
+    \left\{
+    \begin{aligned}
+        H_0:\beta_j=0 \\
+        H_1:\beta_j\neq0
+    \end{aligned}
+    \right.
+\end{align*}$$
+
+```{python}
+dados_py = dados_py.dropna()
+```
+
+```{python}
+dados_py.isnull().sum()
 ```
 
 
+```{python}
+model_1 = smf.ols(formula = 'body_mass_g ~ bill_length_mm', data = dados_py)
+res_1 = model_1.fit() 
+print(model_1.fit().summary())
+```
 
+```{python}
+model_2 = smf.ols(formula = 'body_mass_g ~ bill_depth_mm', data = dados_py)
+print(model_2.fit().summary())
+```
 
+```{python}
+model_3 = smf.ols(formula = 'body_mass_g ~ flipper_length_mm', data = dados_py)
+print(model_3.fit().summary())
+```
+Note que em todos os valores as variáveis são significativas, uma vez que em todos pvalor = 0 < 0.05 e, portanto, rejeitamos a hipótese nula.
+
+Agora, vamos tentar adicionar múltiplas variáveis independentes à fórmula
+
+```{python}
+model_4 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + bill_depth_mm', data = dados_py)
+print(model_4.fit().summary())
+```
+
+```{python}
+model_5 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + flipper_length_mm', data = dados_py)
+print(model_5.fit().summary()) 
+```
+Note que bill_length_mm deu não significativo no model_5
+
+```{python}
+model_6 = smf.ols(formula = 'body_mass_g ~ bill_depth_mm + flipper_length_mm', data = dados_py)
+print(model_6.fit().summary()) 
+```
+No modelo 6, bill_depth_mm deu não significativo.
+Agora, vamos fazer um modelo com as 3 variáveis juntas uma vez que já analisamos individualmente, dois a dois, agora faremos três a três.
+
+```{python}
+model_7 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm', data = dados_py)
+print(model_7.fit().summary()) 
+```
+O que concluímos é que, enquanto bill_depth e bill_length são estatísticamente significativos quando usados juntos, ao serem combinados com flipper_length, eles se tornam insignificantes.
+
+```{python}
+models = [model_1, model_2, model_3, model_4, model_5, model_6, model_7]
+model_summaries = pd.DataFrame({
+  'Model': [f'Model {i}' for i in range(1, 8)],
+  'R-squared': [model.fit().rsquared for model in models],
+  'AIC': [model.fit().aic for model in models]
+  
+})
+model_summaries
+```
+É possível concluir que model_3 é melhor (o que só possui o intercepto e flipper) pois nos casos em que temos flipper e bill, a segunda sempre da não significativa e caímos no modelo apenas com flipper e intercepto.
+
+# Verificação de suposições
+
+```{r}
+dados <- drop_na(dados)
+model_3_r <- lm(body_mass_g ~ flipper_length_mm, data = dados)
+```
+
+```{r}
+plot(dados$body_mass_g, dados$flipper_length_mm)
+```
+
+```{r}
+ggresiduals(model_3_r)
+```
 
 
