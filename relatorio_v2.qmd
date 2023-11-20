@@ -1,0 +1,235 @@
+---
+title: "Relatório"
+format: pdf
+editor: source
+author: Tomás Bernardes & Bruno Ribeiro
+---
+
+# MUDANÇAS Q EU FIZ (OLHAR)
+
+-   instalei o seaborn
+-   e eu vou ir mudando alguns graficos pra fazer com o R mas n sei se ele vai deixar usar o ggplot msm
+-   tive q tirar todas as coisas de latex pq n tava dando render no meu pc
+-   enchi linguiça colocando tipo oq a gente vai analisar e os objetivos etc etc so pra ficar bonit
+-   todos os bagulho q eu escrevi estao tudo errado e com erros de digitação, no final vou passar tudo por um corretor pra
+ficar certinho
+se vc quiser ver como fica os plots feitos no python, no R, vc tem q colocar plt.show() do pacote matplotlib.pyplot dps
+
+os plot do python no quarto tao saindo bugado, ta saindo dois mas n sei como arruma isso, talvez tenhamos que fazer pelo ggplot mesmo.......... derrota total
+
+# Objetivos
+
+Este trabalho procura analisar o banco de dados *penguins* por meio de regressões lineares realizadas usando os softwares python e R.
+
+## Breve explicação do banco de dados *penguins*
+
+O banco de dados penguins possui a analise de três especies de penguins percentencentes ao arquipelego Palmer
+
+```{r}
+#| warning: false
+
+library(palmerpenguins)
+library(tidyverse)
+library(reticulate)
+library(gridExtra)
+library(GGally)
+library(reglin)
+library(sjPlot)
+```
+
+```{python}
+#| warning: false
+import numpy as np
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+import pandas as pd
+import seaborn as sns
+```
+
+```{r}
+dados <- penguins
+head(penguins)
+```
+
+```{python}
+#| output: false
+#| warning: false
+# Verificando valores nulos
+dados_py = r.dados
+dados_py.isnull().sum()
+```
+
+# Analise grafica
+
+Iremos, antes de tudo, realizar uma análise exploratória dos dados para que, desta forma, possamos criar nossas primeiras hipótese. Para tal, utilizaremos o pacote **ggplot**
+
+```{r}
+#| warning: false
+body_mass_plot <- ggplot(data = penguins) + #- distribution of the response variable
+  aes(x = body_mass_g) +
+  geom_histogram(color = "red", binwidth = 0.5) +
+  xlab("Penguin body mass (g)")
+
+species_plot <- ggplot(data = penguins) + #- distribution of the explanatory variable
+  aes(x = species) +
+  geom_bar(fill = "orange", binwidth = 0.5) +
+  xlab("Penguin species") +
+  geom_text(aes(label = ..count..), 
+            stat = "count", 
+            vjust = 1.5, 
+            colour = "black")
+
+bill_length_plot <- ggplot(data = penguins) + #- distribution of the explanatory variable
+  aes(x = bill_length_mm) +
+  geom_histogram(fill = "yellow", colour = "white", binwidth = 0.5) +
+  xlab("Penguin bill length (mm)")
+
+bill_depth_plot <- ggplot(data = penguins) + #- distribution of the explanatory variable
+  aes(x = bill_depth_mm) +
+  geom_histogram(fill = "green", colour = "white", binwidth = 0.5) +
+  xlab("Penguin bill depth (mm)")
+
+flipper_length_plot <- ggplot(data = penguins) + #- distribution of the explanatory variable
+  aes(x = flipper_length_mm) +
+  geom_histogram(fill = "blue", colour = "blue", binwidth = 0.5) +
+  xlab("Penguin flipper length (mm)")
+
+penguin_sex_plot <- ggplot(data = penguins) + #- distribution of the explanatory variable
+  aes(x = sex) +
+  geom_bar(fill = "purple", binwidth = 0.5) +
+  xlab("Penguin sex (M of F)") +
+  geom_text(aes(label = ..count..), 
+            stat = "count", 
+            vjust = 1.5, 
+            colour = "black")
+```
+
+```{r}
+#| warning: false
+grid.arrange(body_mass_plot, species_plot, bill_length_plot, bill_depth_plot, flipper_length_plot, penguin_sex_plot)
+```
+
+```{r}
+#| warning: false
+ggpairs(data = penguins,
+        columns = c("species", "bill_length_mm", "bill_depth_mm", "flipper_length_mm", "sex", "body_mass_g"))
+```
+
+No gráfico acima a diagonal principal fornece-nos a distribuição aproximada da variável. Acima da diagonal, temos as medidadas de correlação e abaixo dela, é mostrado o scatterplot entre duas variáveis com o intuito de observar se há correlação.
+
+Do gráfico, é possível perceber uma forte correlação entre *body_mass* e todas as outras variaveis quantitativas, isto é, *bill_length*,*bill_depth*,**flipper_length**
+
+# Hipoteses a serem testadas
+
+Dado a primeira analise feita por meio dos graficos, iremos construir modelos analisando a variavel resposta em relação as variaveis quantitativas individualmente e simultaneamente. Esperamos que todos os parametros sejam significativos, uma vez que, quanto mais largas são as caracteristicas morfologicas do penguin, maior sera o seu peso, assim como indicado pela correlação dos gráficos anteriores.
+
+Em seguida, iremos analisar a relação do peso dos penguins por ilhas e por especies por meio de uma modelagem paralela. Pressupomos que, nas ilhas menores, os pinguins serão mais magros, uma vez que estas podem caracer de alimento
+
+Por fim, levaremos em conta a questão da especie diante de todas estas analises
+
+# Construindo modelos
+
+Primeiro, queremos verificar a a relação entre body_mass_g e bill_length_mm, bill_depth_mm e flipper_length_mm individualmente. Lembrando que estaremos testando as hipóteses
+
+```{python}
+#| output: false
+dados_py = dados_py.dropna()
+```
+
+```{python}
+#| output: false
+dados_py.isnull().sum()
+```
+### *body_mass_g* vs *bill_length_mm*
+```{python}
+model_1 = smf.ols(formula = 'body_mass_g ~ bill_length_mm', data = dados_py)
+res_1 = model_1.fit() 
+print(model_1.fit().summary())
+```
+
+```{python}
+#| warning: false
+hhh = sns.lmplot(x="bill_length_mm", y="body_mass_g", data=dados_py,line_kws={"color": 'darkred'})
+sns.scatterplot(x="bill_length_mm", y="body_mass_g", data=dados_py, hue="species")
+```
+### *body_mass_g* vs *bill_depth_mm*
+```{python}
+model_2 = smf.ols(formula = 'body_mass_g ~ bill_depth_mm', data = dados_py)
+print(model_2.fit().summary())
+```
+
+```{python}
+#| warning: false
+sns.lmplot(x="bill_depth_mm", y="body_mass_g", data=dados_py,line_kws={"color": 'darkred'})
+sns.scatterplot(x="bill_depth_mm", y="body_mass_g", data=dados_py, hue="species")
+```
+### *body_mass_g* vs *flipper_depth_mm*
+```{python}
+model_3 = smf.ols(formula = 'body_mass_g ~ flipper_length_mm', data = dados_py)
+print(model_3.fit().summary())
+```
+
+```{r}
+#| warning: false
+ggplot(
+  dados,
+  aes(x = flipper_length_mm, y = body_mass_g)) +
+  geom_point(aes(color = species)) +
+  geom_smooth(method = "lm", se = T, color = 'darkred') +
+  theme_minimal()
+
+```
+
+Note que em todos os valores as variáveis são significativas, uma vez que em todos pvalor = 0 \< 0.05 e, portanto, rejeitamos a hipótese nula.
+
+Agora, vamos tentar adicionar múltiplas variáveis independentes à fórmula
+
+```{python}
+model_4 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + bill_depth_mm', data = dados_py)
+print(model_4.fit().summary())
+```
+
+```{python}
+model_5 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + flipper_length_mm', data = dados_py)
+print(model_5.fit().summary()) 
+```
+
+Note que *bill_length_mm* deu não significativo no model_5
+
+```{python}
+model_6 = smf.ols(formula = 'body_mass_g ~ bill_depth_mm + flipper_length_mm', data = dados_py)
+print(model_6.fit().summary()) 
+```
+
+No modelo 6, *bill_depth_mm* deu não significativo. Agora, vamos fazer um modelo com as 3 variáveis juntas uma vez que já analisamos individualmente, dois a dois, agora faremos três a três.
+
+```{python}
+model_7 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm', data = dados_py)
+print(model_7.fit().summary()) 
+```
+
+O que concluímos é que, enquanto bill_depth e bill_length são estatísticamente significativos quando usados juntos, ao serem combinados com flipper_length, eles se tornam insignificantes.
+
+```{python}
+models = [model_1, model_2, model_3, model_4, model_5, model_6, model_7]
+model_summaries = pd.DataFrame({
+  'Model': [f'Model {i}' for i in range(1, 8)],
+  'R-squared': [model.fit().rsquared for model in models],
+  'AIC': [model.fit().aic for model in models]
+  
+})
+model_summaries
+```
+
+É possível concluir que model_3 é melhor (o que só possui o intercepto e flipper) pois nos casos em que temos flipper e bill, a segunda sempre da não significativa e caímos no modelo apenas com flipper e intercepto.
+
+# Verificação de suposições
+
+```{r}
+dados <- drop_na(dados)
+model_3_r <- lm(body_mass_g ~ flipper_length_mm, data = dados)
+```
+
+```{r}
+ggresiduals(model_3_r)
+```
