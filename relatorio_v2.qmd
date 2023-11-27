@@ -43,11 +43,11 @@ import numpy as np
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 import pandas as pd
-#import seaborn as sns
 ```
 
 ```{r}
 dados <- penguins
+dados = drop_na(dados)
 head(penguins)
 ```
 
@@ -117,7 +117,7 @@ ggpairs(data = penguins,
 
 No gráfico acima a diagonal principal fornece-nos a distribuição aproximada da variável. Acima da diagonal, temos as medidadas de correlação e abaixo dela, é mostrado o scatterplot entre duas variáveis com o intuito de observar se há correlação.
 
-Do gráfico, é possível perceber uma forte correlação entre *body_mass* e todas as outras variaveis quantitativas, isto é, *bill_length*,*bill_depth*,**flipper_length**
+Do gráfico, é possível perceber uma forte correlação entre *body_mass* e todas as outras variaveis quantitativas, isto é, *bill_length*,*bill_depth*,**flipper_length**, o que pode causar um problema de multicolinearidade no nosso modelo.
 
 # Hipoteses a serem testadas
 
@@ -163,13 +163,8 @@ res_parallel = model_parallel.fit()
 print(model_parallel.fit().summary())
 ```
 
-```{r}
-ggresiduals(lm(body_mass_g ~ flipper_length_mm + species, data = dados))
-```
 
-
-
-# Construindo modelos
+# Analise exploratoria de alguns modelos
 
 Primeiro, queremos verificar a a relação entre body_mass_g e bill_length_mm, bill_depth_mm e flipper_length_mm individualmente. Lembrando que estaremos testando as hipóteses
 
@@ -185,14 +180,17 @@ dados_py.isnull().sum()
 ### *body_mass_g* vs *bill_length_mm*
 ```{python}
 model_1 = smf.ols(formula = 'body_mass_g ~ bill_length_mm', data = dados_py)
-res_1 = model_1.fit() 
-print(model_1.fit().summary())
 ```
 
-```{python}
-#| warning: false
-hhh = sns.lmplot(x="bill_length_mm", y="body_mass_g", data=dados_py,line_kws={"color": 'darkred'})
-sns.scatterplot(x="bill_length_mm", y="body_mass_g", data=dados_py, hue="species")
+```{r}
+ggplot(
+  dados,
+  aes(x = bill_length_mm, y = body_mass_g)) +
+  geom_point(aes(color = species,
+                 shape = island,
+                 size = sex)) +
+  geom_smooth(method = "lm", se = T, color = 'darkred') +
+  theme_minimal()
 ```
 ### *body_mass_g* vs *bill_depth_mm*
 ```{python}
@@ -200,10 +198,15 @@ model_2 = smf.ols(formula = 'body_mass_g ~ bill_depth_mm', data = dados_py)
 print(model_2.fit().summary())
 ```
 
-```{python}
-#| warning: false
-sns.lmplot(x="bill_depth_mm", y="body_mass_g", data=dados_py,line_kws={"color": 'darkred'})
-sns.scatterplot(x="bill_depth_mm", y="body_mass_g", data=dados_py, hue="species")
+```{r}
+ggplot(
+  dados,
+  aes(x = bill_depth_mm, y = body_mass_g)) +
+  geom_point(aes(color = species,
+                 shape = island,
+                 size = sex)) +
+  geom_smooth(method = "lm", se = T, color = 'darkred') +
+  theme_minimal()
 ```
 ### *body_mass_g* vs *flipper_depth_mm*
 ```{python}
@@ -212,19 +215,22 @@ print(model_3.fit().summary())
 ```
 
 ```{r}
-#| warning: false
 ggplot(
   dados,
   aes(x = flipper_length_mm, y = body_mass_g)) +
-  geom_point(aes(color = species)) +
+  geom_point(aes(color = species,
+                 shape = island,
+                 size = sex)) +
   geom_smooth(method = "lm", se = T, color = 'darkred') +
   theme_minimal()
-
 ```
 
 
-
 Note que em todos os valores as variáveis são significativas, uma vez que em todos pvalor = 0 \< 0.05 e, portanto, rejeitamos a hipótese nula.
+Pelos graficos percebemos duas coisas também,
+* As especies dos penguins estão fortemente atreladas a ilha.
+* Naturalmente, os penguins machos são mais pesados do que as femeas.
+Ambas estas descobertas nos ajudarão a melhorar ainda mais o nosso modelo.
 
 Agora, vamos tentar adicionar múltiplas variáveis independentes à fórmula
 
@@ -254,6 +260,13 @@ print(model_7.fit().summary())
 
 O que concluímos é que, enquanto bill_depth e bill_length são estatísticamente significativos quando usados juntos, ao serem combinados com flipper_length, eles se tornam insignificantes.
 
+Observamos também que, pelo grafico, o tipo de especie e o sexo aparentam ter algum tipo relevancia para a regressão,o que esta de acordo com nossas suposições inciais.
+
+```{python}
+model_7 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm', data = dados_py)
+print(model_7.fit().summary()) 
+```
+
 ```{python}
 models = [model_1, model_2, model_3, model_4, model_5, model_6, model_7]
 model_summaries = pd.DataFrame({
@@ -267,8 +280,60 @@ model_summaries
 
 É possível concluir que model_3 é melhor (o que só possui o intercepto e flipper) pois nos casos em que temos flipper e bill, a segunda sempre da não significativa e caímos no modelo apenas com flipper e intercepto.
 
-# Verificação de suposições
+Vamos levar em conta agora as suposições descobertas pelos nosso graficos e criaremos um modelo que leva em conta dois interceptos extras, o da especie e o do sexo
 
+```{python}
+model_8 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm + species + sex', data = dados_py)
+print(model_8.fit().summary()) 
+```
+
+Vemos que este modelo aparenta ser muito melhor, pois todas as variaveis demonstram ser significativas.
+Compararemos agora este novo modelo com o anterioror.
+```{python}
+models = [model_7, model_8]
+model_summaries = pd.DataFrame({
+  'Model': [f'Model {i}' for i in range(7, 9)],
+  'R-squared': [model.fit().rsquared for model in models],
+  'AIC': [model.fit().aic for model in models]
+  
+})
+model_summaries
+```
+Concluimos, portanto, que o o ultimo modelo demonstra ser melhor que todos os outros, ja que seu R2 é maior e o seu AIC menor, ou seja, ele explica uma porcentagem maior da variavel resposta do que os outros modelos.
+
+Num primeiro momento, parece razoável considerar a inclusão de variaveis com interação para este modelo. No entanto, os resultados abaixo evidenciam que essa suposição se mostra pouco apropriada para o nosso estudo.
+
+```{python}
+model_9 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm + species + sex + species:bill_length_mm + species:bill_depth_mm  + species:flipper_length_mm', data = dados_py)
+print(model_9.fit().summary()) 
+```
+
+Vemos que este modelo não aparenta ser muito bom, pois tem muitas variaveis e poucas delas relevantes para o modelo
+
+Isso se deve, possivelmente, porque o ganho de peso nas diferentes espécies de pinguins segue um padrão similar em relação ao aumento das características morfológicas que estamos analisando.
+
+Em contraste com os resultados anteriores, vemos que a interação com a varivel sexo, de fato, proporciona um modelo ligeiramente supeior.
+
+```{python}
+model_10 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm + species + sex + sex:bill_length_mm + sex:bill_depth_mm  + sex:flipper_length_mm', data = dados_py)
+print(model_10.fit().summary()) 
+```
+
+```{python}
+models = [model_8, model_9,model_10]
+model_summaries = pd.DataFrame({
+  'Model': [f'Model {i}' for i in range(8, 11)],
+  'R-squared': [model.fit().rsquared for model in models],
+  'AIC': [model.fit().aic for model in models]
+  
+})
+model_summaries
+```
+Contudo, apesar da breve porem existente superioridade do modelo 10, o modelo 8 ainda demonstra ser preferivel, ja que consegue explicar os dados de forma bastante similar mas operando com muito menos variaveis.
+
+# Verificação de adequação do modelo
+
+Iremos agora fazer a analise de residuos do modelo que escolhemos o >>>>>>>>8<M<<<<<<<<<<<<<< 
 ```{r}
 dados <- drop_na(dados)
 model_3_r <- lm(body_mass_g ~ flipper_length_mm, data = dados)
