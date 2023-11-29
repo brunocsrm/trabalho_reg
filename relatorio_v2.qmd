@@ -99,6 +99,54 @@ penguin_sex_plot <- ggplot(data = penguins) + #- distribution of the explanatory
 #| warning: false
 grid.arrange(body_mass_plot, species_plot, bill_length_plot, bill_depth_plot, flipper_length_plot, penguin_sex_plot)
 ```
+```{r}
+b1 <- ggplot(dados, aes(x = species, y = body_mass_g, fill = species)) + 
+  stat_boxplot(geom = "errorbar",
+               width = 0.15) + 
+  geom_boxplot() +
+  xlab("Espécies") + 
+  ylab("Massa Corporal (g)") +
+  theme_light()
+
+
+b2 <- ggplot(dados, aes(x = island, y = body_mass_g, fill = island)) + 
+  stat_boxplot(geom = "errorbar",
+               width = 0.15) + 
+  geom_boxplot() +
+  xlab("Ilhas") + 
+  ylab("Massa Corporal (g)") +
+  theme_light()
+
+b3 <- ggplot(dados, aes(x = sex, y = body_mass_g, fill = sex)) + 
+  stat_boxplot(geom = "errorbar",
+               width = 0.15) + 
+  geom_boxplot() +
+  xlab("sexo") + 
+  ylab("Massa Corporal (g)") +
+  theme_light()
+
+p1 <- ggplot(dados, aes(x = body_mass_g, fill = species)) + 
+  geom_histogram( color="#e9ecef", position = 'identity') + 
+  xlab("Massa Corporal (g)") +
+  ylab("Frequência") + 
+  theme_light()
+
+
+p2 <- ggplot(dados, aes(x = body_mass_g, fill = island)) + 
+  geom_histogram( color="#e9ecef", position = 'identity') + 
+  xlab("Massa Corporal (g)") +
+  ylab("Frequência") + 
+  theme_light()
+
+
+p3 <- ggplot(dados, aes(x = body_mass_g, fill = sex)) + 
+  geom_histogram( color="#e9ecef", position = 'identity') + 
+  xlab("Massa Corporal (g)") +
+  ylab("Frequência") + 
+  theme_light()
+
+grid.arrange(p1, b1, p2, b2, p3, b3)
+```
 
 ```{r}
 #| warning: false
@@ -379,7 +427,7 @@ vif(fit_8)
 E,para concluir o uso das outras variaveis indicadores (ano e ilha) também pouco adicionam ao modelo total.
 
 ```{python}
-model_10 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm + species + sex +sex:bill_length_mm + sex:bill_depth_mm  + sex:flipper_length_mm', data = dados_py)
+model_11 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm + species + island + year', data = dados_py)
 print(model_10.fit().summary()) 
 ```
 
