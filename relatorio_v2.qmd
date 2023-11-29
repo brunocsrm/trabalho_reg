@@ -27,7 +27,7 @@ O banco de dados penguins possui a analise de três especies de penguins percent
 
 ```{r}
 #| warning: false
-
+#| message: false
 library(palmerpenguins)
 library(tidyverse)
 library(reticulate)
@@ -39,15 +39,19 @@ library(sjPlot)
 
 ```{python}
 #| warning: false
-import numpy as np
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
+import plotly.express as px
+from scipy.stats import shapiro, anderson, kstest
 ```
 
 ```{r}
 dados <- penguins
-dados = drop_na(dados)
+dados <-  drop_na(dados)
 head(penguins)
 ```
 
@@ -111,9 +115,59 @@ grid.arrange(body_mass_plot, species_plot, bill_length_plot, bill_depth_plot, fl
 
 ```{r}
 #| warning: false
-ggpairs(data = penguins,
+#| message: false
+ggpairs(data = penguins, mapping = aes(fill = species),
         columns = c("species", "bill_length_mm", "bill_depth_mm", "flipper_length_mm", "sex", "body_mass_g"))
 ```
+
+
+```{python}
+#| warning: false
+#| message: false
+fig = plt.figure(figsize=(50, 30))
+gs = GridSpec(2, 3, width_ratios=[5,5,5], height_ratios=[5,5], hspace=0.5, wspace=1)
+
+# Boxplot 1
+ax1 = plt.subplot(gs[0])
+sns.boxplot(x='species', y='body_mass_g', data=dados_py, palette='viridis', ax=ax1)
+ax1.set(xlabel='Espécies', ylabel='Massa Corporal (g)')
+ax1.set_xticklabels(ax1.get_xticklabels(), fontsize=6.3)  # Adjust x-axis label size
+
+# Boxplot 2
+ax2 = plt.subplot(gs[1])
+sns.boxplot(x='island', y='body_mass_g', data=dados_py, palette='viridis', ax=ax2)
+ax2.set(xlabel='Ilhas', ylabel='Massa Corporal (g)')
+ax2.set_xticklabels(ax2.get_xticklabels(), fontsize=6.3)
+
+# Boxplot 3
+ax3 = plt.subplot(gs[2])
+sns.boxplot(x='sex', y='body_mass_g', data=dados_py, palette='viridis', ax=ax3)
+ax3.set(xlabel='Sexo', ylabel='Massa Corporal (g)')
+ax3.set_xticklabels(ax3.get_xticklabels(), fontsize=6.3)
+
+# Histogram 1
+ax4 = plt.subplot(gs[3])
+sns.histplot(data=dados_py, x='body_mass_g', hue='species', kde=True, palette='viridis', ax=ax4)
+ax4.set(xlabel='Massa Corporal (g)', ylabel='Frequência')
+ax4.legend().set_visible(False)
+
+
+# Histogram 2
+ax5 = plt.subplot(gs[4])
+sns.histplot(data=dados_py, x='body_mass_g', hue='island', kde=True, palette='viridis', ax=ax5)
+ax5.set(xlabel='Massa Corporal (g)', ylabel='Frequência')
+ax5.legend().set_visible(False)
+
+# Histogram 3
+ax6 = plt.subplot(gs[5])
+sns.histplot(data=dados_py, x='body_mass_g', hue='sex', kde=True, palette='viridis', ax=ax6)
+ax6.set(xlabel='Massa Corporal (g)', ylabel='Frequência')
+ax6.legend().set_visible(False)
+
+plt.tight_layout()
+plt.show()
+```
+
 
 No gráfico acima a diagonal principal fornece-nos a distribuição aproximada da variável. Acima da diagonal, temos as medidadas de correlação e abaixo dela, é mostrado o scatterplot entre duas variáveis com o intuito de observar se há correlação.
 
@@ -130,25 +184,10 @@ Por fim, levaremos em conta a questão da especie diante de todas estas analises
 # Seleção de de variávies
 
 ```{r}
-dados2 <- dados %>% mutate(species=NULL, sex=NULL, year=NULL)
-head(dados2)
-```
-
-```{r}
-fit_cont <- lm(body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm, data = dados)
-```
-
-
-```{r}
-
-```
-
-
-```{r}
 dados <- dados %>% drop_na()
 fit_null <- lm(body_mass_g ~ 1, data = dados)
-fit_inter <- lm(body_mass_g ~ flipper_length_mm, data = dados)
-fit_full <- lm(body_mass_g ~ ., data = dados)
+fit_inter <- lm(body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm, data = dados)
+fit_full <- lm(body_mass_g ~ . + sex:species, data = dados)
 step(
   fit_inter, 
   direction = "both", 
@@ -156,13 +195,7 @@ step(
 )
 
 ```
-
-```{python}
-model_parallel = smf.ols(formula = 'body_mass_g ~ flipper_length_mm + species', data = dados_py)
-res_parallel = model_parallel.fit() 
-print(model_parallel.fit().summary())
-```
-
+Pela selação de variáveis, esta indicado que deveria ser incluído no modelo species, sex e year. Contudo, conforme veremos na saída 
 
 # Analise exploratoria de alguns modelos
 
@@ -283,8 +316,8 @@ model_summaries
 Vamos levar em conta agora as suposições descobertas pelos nosso graficos e criaremos um modelo que leva em conta dois interceptos extras, o da especie e o do sexo
 
 ```{python}
-model_8 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm + species + sex', data = dados_py)
-print(model_8.fit().summary()) 
+model_8 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm + species + sex', data = dados_py).fit()
+print(model_8.summary()) 
 ```
 
 Vemos que este modelo aparenta ser muito melhor, pois todas as variaveis demonstram ser significativas.
@@ -301,7 +334,9 @@ model_summaries
 ```
 Concluimos, portanto, que o o ultimo modelo demonstra ser melhor que todos os outros, ja que seu R2 é maior e o seu AIC menor, ou seja, ele explica uma porcentagem maior da variavel resposta do que os outros modelos.
 
-Num primeiro momento, parece razoável considerar a inclusão de variaveis com interação para este modelo. No entanto, os resultados abaixo evidenciam que essa suposição se mostra pouco apropriada para o nosso estudo.
+Num primeiro momento, parece razoável considerar a inclusão de variaveis com interação para este modelo. No entanto, os resultados abaixo evidenciam que essa suposição se mostra pouco apropriada para o nosso estudo. 
+
+Note que a Sepecie Adelia bem como o sexo Feminino foram removidos pelo fato de serem insignificantes.
 
 ```{python}
 model_9 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm + species + sex + species:bill_length_mm + species:bill_depth_mm  + species:flipper_length_mm', data = dados_py)
@@ -312,11 +347,11 @@ Vemos que este modelo não aparenta ser muito bom, pois tem muitas variaveis e p
 
 Isso se deve, possivelmente, porque o ganho de peso nas diferentes espécies de pinguins segue um padrão similar em relação ao aumento das características morfológicas que estamos analisando.
 
-Em contraste com os resultados anteriores, vemos que a interação com a varivel sexo, de fato, proporciona um modelo ligeiramente supeior.
+Em contraste com os resultados anteriores, vemos que a interação com a varivel sexo, de fato, proporciona um modelo ligeiramente supeior. Com isso, portanto, nota-se que o melhor modelo é o que contém apenas a interação entre sexo e espécie
 
 ```{python}
-model_10 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm + species + sex + sex:bill_length_mm + sex:bill_depth_mm  + sex:flipper_length_mm', data = dados_py)
-print(model_10.fit().summary()) 
+model_10 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm + species + sex + sex:bill_length_mm + sex:bill_depth_mm  + sex:flipper_length_mm', data = dados_py).fit()
+print(model_10.summary()) 
 ```
 
 ```{python}
@@ -333,12 +368,62 @@ Contudo, apesar da breve porem existente superioridade do modelo 10, o modelo 8 
 
 # Verificação de adequação do modelo
 
-Iremos agora fazer a analise de residuos do modelo que escolhemos o >>>>>>>>8<M<<<<<<<<<<<<<< 
-```{r}
-dados <- drop_na(dados)
-model_3_r <- lm(body_mass_g ~ flipper_length_mm, data = dados)
-```
+Iremos agora fazer a analise de residuos do modelo que escolhemos o modelo 8. 
 
 ```{r}
-ggresiduals(model_3_r)
+fit_8 <- lm(body_mass_g ~ bill_length_mm + bill_length_mm + flipper_length_mm + species + sex, data = dados)
+ggresiduals(fit_8)
 ```
+
+
+Conforme podemos observar no gráfico acima, o modelo 8 satisfaz a suposição de hocedasticidade bem como a de normalidade. Além disso, não há nenhum problema de escala entre as covariáveis e, não há valores outliers, apenas alguns pontos de alavanca e outros influentes.
+
+
+```{python}
+
+residuals = model_8.resid
+
+shapiro_test_stat, shapiro_p_value = shapiro(residuals)
+anderson_test_stat, anderson_critical_values, anderson_significance_levels = anderson(residuals)
+ks_test_stat, ks_p_value = kstest(residuals, 'norm')
+
+
+normality_test_results = pd.DataFrame({
+    'Test': ['Shapiro-Wilk', 'Anderson-Darling', 'Kolmogorov-Smirnov'],
+    'Test Statistic': [shapiro_test_stat, anderson_test_stat, ks_test_stat],
+    'p-value': [shapiro_p_value, None, ks_p_value]  # Anderson-Darling has critical values and significance levels
+})
+
+
+print(normality_test_results)
+```
+Todos os testes de normalidade, concluem que os resíduos são normais.
+
+Agora, prosseguimos para a multicolinearidade
+
+```{python}
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+
+vif= pd.DataFrame()
+vif["Covariável"] = X.columns
+vif["VIF"] = [variance_inflation_factor(model_10.model.data.orig_exog.values, i) for i in range(X.shape[1])]
+
+print(vif)
+```
+
+Conforme podemos ver na tabela acima, o modelo possui problemas de multicolinearidade para as variáveis intercepto, Gentoo, sexo masculino, profundidade do bico e comprimento da asa.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
