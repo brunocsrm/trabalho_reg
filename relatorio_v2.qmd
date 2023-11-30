@@ -162,40 +162,6 @@ Do gráfico, é possível perceber uma forte correlação entre *body_mass* e to
 
 Dado a primeira analise feita por meio dos graficos, iremos construir modelos analisando a variavel resposta em relação as variaveis quantitativas individualmente e simultaneamente. Esperamos que todos os parametros sejam significativos, uma vez que, quanto mais largas são as caracteristicas morfologicas do penguin, maior sera o seu peso, assim como indicado pela correlação dos gráficos anteriores.
 
-# Seleção de de variávies
-
-```{r}
-dados2 <- dados %>% mutate(species=NULL, sex=NULL, year=NULL)
-head(dados2)
-```
-
-```{r}
-fit_cont <- lm(body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm, data = dados)
-```
-
-```{r}
-
-```
-
-```{r}
-dados <- dados %>% drop_na()
-fit_null <- lm(body_mass_g ~ 1, data = dados)
-fit_inter <- lm(body_mass_g ~ flipper_length_mm, data = dados)
-fit_full <- lm(body_mass_g ~ ., data = dados)
-step(
-  fit_inter, 
-  direction = "both", 
-  scope = list(lower = fit_null, upper=fit_full)
-)
-
-```
-
-```{python}
-model_parallel = smf.ols(formula = 'body_mass_g ~ flipper_length_mm + species', data = dados_py)
-res_parallel = model_parallel.fit() 
-print(model_parallel.fit().summary())
-```
-
 # Analise exploratoria de alguns modelos
 
 Primeiro, queremos verificar a a relação entre body_mass_g e bill_length_mm, bill_depth_mm e flipper_length_mm individualmente. Lembrando que estaremos testando as hipóteses
@@ -455,12 +421,23 @@ ggresiduals(fit_8)
 
 Conforme podemos observar no gráfico acima, o modelo 8 satisfaz a suposição de hocedasticidade bem como a de normalidade. Além disso, não há nenhum problema de escala entre as covariáveis e, não há valores outliers, apenas alguns pontos de alavanca e outros influentes.
 
+```{python}
+model_8 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm + species + sex', data = dados_py)
+
+residuals = model_8.fit().resid
+
+shapiro_test_stat, shapiro_p_value = shapiro(residuals)
+anderson_test_stat, anderson_critical_values, anderson_significance_levels = anderson(residuals)
+ks_test_stat, ks_p_value = kstest(residuals, 'norm')
 
 
+normality_test_results = pd.DataFrame({
+    'Test': ['Shapiro-Wilk', 'Anderson-Darling', 'Kolmogorov-Smirnov'],
+    'Test Statistic': [shapiro_test_stat, anderson_test_stat, ks_test_stat],
+    'p-value': [shapiro_p_value, None, ks_p_value]  # Anderson-Darling has critical values and significance levels
+})
+
+
+print(normality_test_results)
+```
 Todos os testes de normalidade, concluem que os resíduos são normais.
-
-Agora, prosseguimos para a multicolinearidade
-
-
-
-Conforme podemos ver na tabela acima, o modelo possui problemas de multicolinearidade para as variáveis intercepto, Gentoo, sexo masculino, profundidade do bico e comprimento da asa.
