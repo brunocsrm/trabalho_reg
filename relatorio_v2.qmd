@@ -1,6 +1,8 @@
 ---
 title: "Relatório"
-format: pdf
+format: pdf 
+geometry:
+  - left= .2in
 editor: source
 author: Tomás Bernardes & Bruno Ribeiro
 ---
@@ -8,6 +10,8 @@ author: Tomás Bernardes & Bruno Ribeiro
 # Objetivos
 
 Este trabalho procura analisar o banco de dados *penguins*, por meio de regressões lineares realizadas usando os softwares python e R.
+
+![penguins a serem estudados](https://education.rstudio.com/blog/2020/07/palmerpenguins-cran/gorman-penguins.jpg){fig-align="center" width="212"}
 
 ```{r}
 #| warning: false
@@ -99,6 +103,7 @@ penguin_sex_plot <- ggplot(data = penguins) + #- distribution of the explanatory
 #| warning: false
 grid.arrange(body_mass_plot, species_plot, bill_length_plot, bill_depth_plot, flipper_length_plot, penguin_sex_plot)
 ```
+
 ```{r}
 b1 <- ggplot(dados, aes(x = species, y = body_mass_g, fill = species)) + 
   stat_boxplot(geom = "errorbar",
@@ -229,7 +234,13 @@ ggplot(
   theme_minimal()
 ```
 
-Note que em todos os valores as variáveis são significativas, uma vez que em todos pvalor = 0 \< 0.05 e, portanto, rejeitamos a hipótese nula. Pelos graficos percebemos três aspectos importantes: \* As especies dos penguins estão fortemente atreladas a uma unica ilha, o que pode acarretar em um problema de multicolinearidade. \* Naturalmente, os penguins machos são mais pesados do que as femeas. \* Em alguns casos,as especies formam clusters bastante distintos, o que sugere que a o uso de uma variavel indicadora da especies seja necessaria.
+Note que em todos os valores as variáveis são significativas, uma vez que em todos pvalor = 0 \< 0.05 e, portanto, rejeitamos a hipótese nula. Pelos graficos percebemos três aspectos importantes:
+
+\- As especies dos penguins estão fortemente atreladas a uma unica ilha, o que pode acarretar em um problema de multicolinearidade.
+
+\- Naturalmente, os penguins machos são mais pesados do que as femeas.
+
+\- Em alguns casos,as especies formam clusters bastante distintos, o que sugere que a o uso de uma variavel indicadora da especies seja necessaria.
 
 Todas estas descobertas nos ajudarão a melhorar ainda mais o nosso modelo.
 
@@ -281,8 +292,11 @@ model_summaries
 Como visto pelos gráficos e analises anteriores, observamos que o uso de variaveis indicadoras aparenta ser relevante para o nosso modelo.Vamos levar em conta agora as suposições descobertas e criaremos um modelo que leva em conta dois interceptos extras, o da especie e o do sexo.
 
 ```{python}
-model_8 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm + species + sex', data = dados_py)
-print(model_8.fit().summary()) 
+model_8 = smf.ols(formula='body_mass_g ~ bill_length_mm + bill_depth_mm +'
+                           ' flipper_length_mm + species + sex',
+                  data=dados_py)
+print(model_8.fit().summary())
+
 ```
 
 Vemos que este modelo aparenta ser muito melhor, pois todas as variaveis demonstram ser significativas. Compararemos agora este novo modelo com o anterior.
@@ -303,8 +317,13 @@ Concluimos, portanto, que o o ultimo modelo demonstra ser melhor que todos os ou
 Num primeiro momento, parece razoável considerar a inclusão de variaveis com interação para este modelo. No entanto, os resultados abaixo evidenciam que essa suposição se mostra pouco apropriada para o nosso estudo.
 
 ```{python}
-model_9 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm + species + sex + species:bill_length_mm + species:bill_depth_mm  + species:flipper_length_mm', data = dados_py)
-print(model_9.fit().summary()) 
+model_9 = smf.ols(formula='body_mass_g ~ bill_length_mm + bill_depth_mm + '
+                          'flipper_length_mm + species + sex + '
+                          'species:bill_length_mm + species:bill_depth_mm + '
+                          'species:flipper_length_mm',
+                  data=dados_py)
+print(model_9.fit().summary())
+
 ```
 
 Vemos que este modelo não aparenta ser muito bom, pois tem muitas variaveis e poucas delas relevantes para o modelo
@@ -314,8 +333,13 @@ Isso se deve, possivelmente, porque o ganho de peso nas diferentes espécies de 
 Em contraste com os resultados anteriores, vemos que a interação com a varivel sexo, de fato, proporciona um modelo ligeiramente supeior.
 
 ```{python}
-model_10 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm + species + sex +sex:bill_length_mm + sex:bill_depth_mm  + sex:flipper_length_mm', data = dados_py)
-print(model_10.fit().summary()) 
+model_10 = smf.ols(formula='body_mass_g ~ bill_length_mm + bill_depth_mm + ' +
+                           'flipper_length_mm + species + sex +' +
+                           'sex:bill_length_mm + sex:bill_depth_mm + ' +
+                           'sex:flipper_length_mm',
+                   data=dados_py)
+print(model_10.fit().summary())
+
 ```
 
 ```{python}
@@ -390,14 +414,17 @@ fit_8 = lm(body_mass_g ~ bill_length_mm +
 vif(fit_8)
 ```
 
-E,para concluir o uso das outras variaveis indicadores (ano e ilha) também pouco adicionam ao modelo total.
+E, para concluir, o uso das outras variaveis indicadores (ano e ilha) também pouco adicionam ao modelo total.
 
 ```{python}
-model_11 = smf.ols(formula = 'body_mass_g ~ bill_length_mm + bill_depth_mm + flipper_length_mm + species + island + year', data = dados_py)
-print(model_10.fit().summary()) 
+model_11 = smf.ols(formula='body_mass_g ~ bill_length_mm + bill_depth_mm + ' +
+                           'flipper_length_mm + species + island + year',
+                   data=dados_py)
+print(model_11.fit().summary())
+
 ```
 
-Isto é bem perceptivel pelos gráficos, ja que a as ilhas e as especies aparentam ser bastante similares, e o as amostras ao longo dos anos também paracem ser bastante similares umas as outras.
+Isto é bem perceptivel pelos gráficos, ja que a as ilhas e as especies aparentam estar bastante atreladas e as amostras ao longo dos anos também paracem ser bastante similares umas as outras.
 
 ```{r}
 #| warning: false
@@ -415,7 +442,11 @@ ggplot(
 Iremos agora fazer a analise de residuos do modelo que escolhemos o modelo 8.
 
 ```{r}
-fit_8 <- lm(body_mass_g ~ bill_length_mm + bill_length_mm + flipper_length_mm + species + sex, data = dados)
+fit_8 <- lm(body_mass_g ~ bill_length_mm + 
+              bill_length_mm + 
+              flipper_length_mm + 
+              species + 
+              sex, data = dados)
 ggresiduals(fit_8)
 ```
 
@@ -434,10 +465,11 @@ ks_test_stat, ks_p_value = kstest(residuals, 'norm')
 normality_test_results = pd.DataFrame({
     'Test': ['Shapiro-Wilk', 'Anderson-Darling', 'Kolmogorov-Smirnov'],
     'Test Statistic': [shapiro_test_stat, anderson_test_stat, ks_test_stat],
-    'p-value': [shapiro_p_value, None, ks_p_value]  # Anderson-Darling has critical values and significance levels
+    'p-value': [shapiro_p_value, None, ks_p_value]
 })
 
 
 print(normality_test_results)
 ```
+
 Todos os testes de normalidade, concluem que os resíduos são normais.
